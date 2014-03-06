@@ -168,6 +168,27 @@ int main(int argc, char *argv[])
 
 	lxc_setup_fs();
 
+	FILE *fp;
+	if ((fp = fopen ("/init/env", "r")) == NULL) {
+		fprintf(stderr, "Failed to open evn file\n");
+		exit(1);
+	}
+
+	char envVal[1024];
+	char *tmp;
+	while (fscanf (fp, "%s", envVal) == 1) {
+		tmp = NULL;
+		tmp = malloc (strlen (envVal) + 1);
+		strcpy (tmp, envVal);
+		putenv(tmp);
+	}
+	fclose(fp);
+
+	if (system("/bin/bash /init/root") != 0) {
+		exit(1);
+	}
+	setuid((uid_t)666);
+
 	if (lxc_caps_reset())
 		exit(EXIT_FAILURE);
 
@@ -188,6 +209,12 @@ int main(int argc, char *argv[])
 		}
 
 		NOTICE("about to exec '%s'", aargv[0]);
+
+		if (chdir("/app") != 0){
+			printf("chdir failed\n");
+			exit(1);
+		}
+		putenv("HOME=/app");
 
 		execvp(aargv[0], aargv);
 		ERROR("failed to exec: '%s' : %m", aargv[0]);
